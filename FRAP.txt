@@ -1,0 +1,88 @@
+macro "FRAP" {
+
+filePath = File.openDialog("Choose a file");
+
+filePath = replace(filePath, "\\", "/");
+
+run("Bio-Formats", "open=filePath autoscale color_mode=Default view=Hyperstack stack_order=XYCZT");
+run("Bio-Formats Macro Extensions") '"open=filePath autoscale color_mode=Default view=Hyperstack stack_order=XYCZT Stack.setChannel(2)");
+Ext.setId(filePath);
+
+  Dialog.create("Bleached areas");
+  Dialog.addCheckbox("Check the box if you want more than 1 bleach field in your analysis", false);
+  Dialog.show();
+  ramp = Dialog.getCheckbox();
+
+	makeRectangle(0,0,512,512);
+	roiManager("add"); ' adds total selection ROI
+  
+	if (ramp==true) {
+				n = 10; 
+	}	
+	else 	{		
+				n = 2;
+				}
+
+	for (i = 1; i<n; i++) {
+	
+	Ext.getMetadataValue("Layer|Circle|Geometry|CenterX #"+i, x);
+	Ext.getMetadataValue("Layer|Circle|Geometry|CenterY #"+i, y);
+	Ext.getMetadataValue("Layer|Circle|Geometry|Radius #"+i, radius1);
+
+		
+		
+		if (x == 0) {
+
+			} else {
+
+				makeOval(x-radius1,y-radius1,2*radius1,2*radius1);
+
+				roiManager("add");
+
+			}
+
+
+
+	Ext.getMetadataValue("Layer|Rectangle|Geometry|Height #"+i, height)
+	Ext.getMetadataValue("Layer|Rectangle|Geometry|Width #"+i, width)
+	Ext.getMetadataValue("Layer|Rectangle|Geometry|Left #"+i, left) 
+	Ext.getMetadataValue("Layer|Rectangle|Geometry|Top #"+i, top)
+
+	if (n < 3) { 
+		
+		if (x == 0) {   ' excecute if there is only 1 bleaching area expected in excel sheet
+
+				makeRectangle(left, top, width, height); ' execute if there is no circular ROI present then look for rectangle
+
+				roiManager("add");
+					}
+				}	
+		
+	else	{' exceute if there are more bleaching area expected
+		
+		if (height == 0) {   'used if i is set to more than 1 will read all bleached ROIs
+
+			} else {
+
+				makeRectangle(left, top, width, height);
+
+				roiManager("add");
+			}
+			}
+
+	}
+
+	makeRectangle(450,80,45,45); 
+	roiManager("add"); 'adds background selection ROI
+	Dialog.create("Message")
+	Dialog.addMessage("First 4 columns is total measurement, last 4 columns is background");
+	Dialog.show();
+	roiManager("multi measure");
+
+	
+	getDirectory("choose where to save");
+	name = getTitle;
+	dotIndex = indexOf(name, ".");
+	name = substring(name, 0, dotIndex);
+	saveAs("Results", name + ".csv");
+
